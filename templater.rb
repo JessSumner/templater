@@ -5,7 +5,8 @@ class Templater
   end
 
   def run 
-    puts open_html_file
+    puts (open_html_file).scan(/[<][*]\s?(.+)\s?[*][>]/)
+    #puts open_html_file.gsub(/[<][*](\s?)(.+)(\s?)[*][>]/, "<* page.title *>" => "Awesomeness" )
   end
 
   private
