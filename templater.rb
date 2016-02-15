@@ -1,7 +1,9 @@
 class Templater
-  attr_reader :html_template
-  def initialize(html_template)
+  require 'json'
+  attr_reader :html_template, :data_file
+  def initialize(html_template, data_file)
     @html_template = html_template
+    @data_file = data_file
   end
 
   def run
@@ -10,6 +12,7 @@ class Templater
       variables_hash
     end
     puts open_html_file.gsub(/[<][*](\s?)(.+)(\s?)[*][>]/, variables_hash)
+    puts convert_json
   end
 
   private
@@ -17,6 +20,10 @@ class Templater
   def open_html_file
     File.read(html_template)
   end
+
+  def convert_json
+    JSON.parse(File.read(data_file))
+  end
 end
 
-Templater.new(ARGV[0]).run
+Templater.new(ARGV[0], ARGV[1]).run
