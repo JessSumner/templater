@@ -4,9 +4,12 @@ class Templater
     @html_template = html_template
   end
 
-  def run 
-    puts (open_html_file).scan(/[<][*]\s?(.+)\s?[*][>]/)
-    #puts open_html_file.gsub(/[<][*](\s?)(.+)(\s?)[*][>]/, "<* page.title *>" => "Awesomeness" )
+  def run
+    variables_hash = open_html_file.scan(/[<][*]\s?(.+)\s?[*][>]/).flatten.inject({}) do |variables_hash, key|
+      variables_hash["<* #{key}*>"] = "replace_me"
+      variables_hash
+    end
+    puts open_html_file.gsub(/[<][*](\s?)(.+)(\s?)[*][>]/, variables_hash)
   end
 
   private
