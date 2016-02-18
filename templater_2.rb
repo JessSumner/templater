@@ -8,7 +8,11 @@ class Templater
   end
 
   def run
-    arrange_template_into_an_array_of_lines
+    template_string = arrange_template_into_an_array_of_lines.
+      join("\n").
+      gsub("<* ", '#{json.').
+      gsub(" *>", '}')
+    eval("\"#{template_string}\"")
   end
 
   def arrange_template_into_an_array_of_lines
