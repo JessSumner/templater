@@ -1,4 +1,5 @@
 class Templater
+  require "json"
   attr_reader :html_template, :data_file
   def initialize(html_template, data_file)
     @html_template = html_template
@@ -7,6 +8,7 @@ class Templater
   end
 
   def run
+    arrange_template_into_an_array_of_lines
   end
 
   def arrange_template_into_an_array_of_lines
@@ -18,7 +20,7 @@ class Templater
         if open_each_block?
           last_each_block << complete_block
         else
-          array_of_lines << complete_block
+          array_of_lines << complete_block.run_through_block(json)
         end
       elsif open_each_block?
         last_each_block << line
@@ -50,17 +52,71 @@ class Templater
   def last_each_block
     @each_block.last
   end
+
+  def json
+    JsonObject.new(convert_json)
+  end
+
+  def convert_json
+    JSON.parse(File.read(data_file))
+  end
 end
 
 class EachBlock
-  def initialize(line: nil, lines: [])
-    @line = line
+  def initialize(line: nil, lines: [], key: nil, value: nil)
+    if line
+      @key, @value = line.gsub(/<\* EACH (\S*) (\S*) \*>/) {|words| "#{$1},#{$2}"}.strip.split(",")
+    else
+      @key = key
+      @value = value
+    end
     @lines = lines
   end
 
   def <<(line)
     @lines << line
   end
+
+  def run_through_block(data)
+    eval("data.#{@key}").each_with_index.map do |item_of_key, index|
+      @lines.map do |each_block_line|
+        new_line = each_block_line.gsub(@value, "#{@key}[#{index}]")
+        if new_line.is_a?(EachBlock)
+          new_line.run_through_block(data)
+        else
+          new_line
+        end
+      end
+    end
+  end
+
+  def gsub(pattern, replacement)
+    key = @key.gsub(pattern, replacement)
+    self.class.new(key: key, value: @value, lines: @lines)
+  end
 end
 
-puts Templater.new(ARGV[0], ARGV[1]).arrange_template_into_an_array_of_lines
+class JsonObject
+  def initialize(json)
+    @json = json
+  end
+
+  def method_missing(method, *arg, &block)
+    value = @json["#{method}"]
+    value_from_hash(value)
+  end
+
+  private
+
+  def value_from_hash(value)
+    if value.is_a?(Hash)
+      JsonObject.new(value)
+    elsif value.is_a?(Array)
+      value.map { |val| value_from_hash(val) }
+    else
+      value
+    end
+  end
+end
+
+puts Templater.new(ARGV[0], ARGV[1]).run
